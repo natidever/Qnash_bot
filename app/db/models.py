@@ -23,6 +23,7 @@ class Product(BaseModel):
     name: str
     description: Optional[str] = None
     price: Decimal
+    discounted_price: Optional[Decimal] = None
     image_url: Optional[str] = None
     group_size_required: int = 5
     is_active: bool = True
@@ -33,6 +34,7 @@ class ProductCreate(BaseModel):
     name: str
     description: Optional[str] = None
     price: Decimal
+    discounted_price: Optional[Decimal] = None
     image_url: Optional[str] = None
     group_size_required: int = 5
     is_active: bool = True
