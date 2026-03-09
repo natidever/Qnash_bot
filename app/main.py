@@ -2,7 +2,7 @@ import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, Request
 from telegram import Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 import uvicorn
@@ -13,7 +13,6 @@ from app.handlers.commands import buy_product, confirm_order, receive_coupon, re
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 WEBHOOK_BASE_URL = (os.getenv("WEBHOOK_BASE_URL") or "").strip()
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "qnash-webhook-secret")
 
 if not TOKEN:
     raise RuntimeError("TELEGRAM_TOKEN is missing in .env")
@@ -42,8 +41,7 @@ async def lifespan(_: FastAPI):
     await telegram_application.initialize()
     await telegram_application.start()
     await telegram_application.bot.set_webhook(
-        url=f"{WEBHOOK_BASE_URL.rstrip('/')}/webhook/{WEBHOOK_SECRET}",
-        secret_token=WEBHOOK_SECRET,
+        url=f"{WEBHOOK_BASE_URL.rstrip('/')}/webhook",
     )
     yield
     await telegram_application.bot.delete_webhook(drop_pending_updates=False)
@@ -54,15 +52,8 @@ async def lifespan(_: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.post("/webhook/{secret}")
-async def telegram_webhook(secret: str, request: Request) -> dict[str, bool]:
-    if secret != WEBHOOK_SECRET:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-
-    secret_header = request.headers.get("x-telegram-bot-api-secret-token")
-    if secret_header != WEBHOOK_SECRET:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-
+@app.post("/webhook")
+async def telegram_webhook(request: Request) -> dict[str, bool]:
     payload = await request.json()
     update = Update.de_json(payload, telegram_application.bot)
     await telegram_application.process_update(update)
